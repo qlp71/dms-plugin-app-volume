@@ -1,0 +1,11 @@
+{
+    "id": "appVolumeControl",
+    "name": "App Volume Control",
+    "description": "Show a volume icon on the bar. Click to open a popout listing applications and control each app's volume with sliders.",
+    "version": "0.1.0",
+    "author": "qlp",
+    "type": "widget",
+    "component": "./AppVolumeControl.qml",
+    "requires": ["wpctl"],
+    "permissions": ["settings_read", "settings_write", "process"]
+}
