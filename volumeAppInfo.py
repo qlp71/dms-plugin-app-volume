@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import subprocess
 
 def get_audio_streams() -> dict[str, list]:

@@ -16,14 +16,15 @@ This [Dank Material Shell](https://github.com/AvengeMedia/DankMaterialShell) plu
 ## Usage
 
 1. Ensure `python` and `wpctl` are installed on your system.
+2. `chmod +x volumeAppInfo.py` to make the script executable.
 2. Open the App Volume Control plugin in DMS to adjust volumes.
-3. Download the files and copy it in `~/.config/DankMaterialShell/plugins/` folder. The file structure should look like this:
+3. Download the files and copy it in `~/.config/DankMaterialShell/plugins/AppVolumeControl` folder. The file structure should look like this:
 
 ```
 $HOME/.config/DankMaterialShell
 ...
 ├── plugins
-│   ├── 'App Volume Control'
+│   ├── AppVolumeControl
 │   │   ├── AppVolumeControl.qml
 │   │   ├── plugin.json
 │   │   ├── README.md

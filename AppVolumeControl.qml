@@ -136,7 +136,6 @@ PluginComponent {
                     model: Object.keys(root.app_Info)
                     delegate: Column {
                         width: parent.width
-                        // padding: Theme.spacingM
                         // 每个应用的图标 + 名字行
                         Row {
                             width: parent.width
@@ -222,7 +221,6 @@ PluginComponent {
             if (code === 0) {
                 let volString = out.replace(/[^\d.]/g, "");  // 移除非数字和非点号字符
                 let vol = parseFloat(volString) * 100.0;
-                // volumeSlider.value = vol
                 root.system_volume = String(vol)
                 console.log("[AppVolume] System volume:", vol)
             } else {
@@ -234,11 +232,12 @@ PluginComponent {
 
     function getAllAppInfo() {
         console.log("[AppVolume] getting apps volumes")
-        Proc.runCommand("getAppVolumes", ["python3", `./volumeAppInfo.py`], (out, code) => {
+        const cmd = `~/.config/DankMaterialShell/plugins/AppVolumeControl/volumeAppInfo.py`
+        Proc.runCommand("getAppVolumes", ["sh", "-c", cmd], (out, code) => {
             // app_Info update
             if (code === 0) {
                 root.app_Info = JSON.parse(out)
-                console.log("[AppVolume] Retrieved app volumes", Object.keys(root.app_Info), root.totHeight, Object.keys(root.app_Info).length, 40+Theme.spacingM * 2)
+                console.log("[AppVolume] Retrieved app volumes", Object.keys(root.app_Info))
                 root.totHeight = 40+Theme.spacingM * 2 + Object.keys(root.app_Info).length * (20 + 1.0*Theme.spacingM + Theme.iconSize) + Theme.spacingM * 2
             }
             else {
