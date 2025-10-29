@@ -18,6 +18,16 @@ PluginComponent {
         console.log("[AppVolume] pill clicked")
     }
 
+    Timer {
+        interval: 5000
+        running: true
+        repeat: true
+        onTriggered: {
+            root.getSystemVolume()
+            root.getAllAppInfo()
+        }
+    }
+
     horizontalBarPill: Component {
         Rectangle{
             id: pill
