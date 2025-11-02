@@ -40,7 +40,7 @@ PluginComponent {
                 // if is_mute is false, volume up, else volume off
                 name: root.is_muted ? "volume_off" : "volume_up"
                 color: Theme.primary
-                font.pixelSize: Theme.iconSize - 6
+                size: Theme.barIconSize(barThickness)
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -58,7 +58,7 @@ PluginComponent {
                 // if is_mute is false, volume up, else volume off
                 name: root.is_muted ? "volume_off" : "volume_up"
                 color: Theme.primary
-                font.pixelSize: Theme.iconSize - 6
+                size: Theme.barIconSize(barThickness)
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -91,7 +91,7 @@ PluginComponent {
                             id: systemVolumeIcon
                             name: root.is_muted ? "volume_off" : "volume_up"
                             color: Theme.primary
-                            font.pixelSize: Theme.iconSize
+                            size: Theme.barIconSize(barThickness)
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         MouseArea {
@@ -155,7 +155,7 @@ PluginComponent {
                                 id: appVolumeIcon
                                 name: (root.app_Info[modelData][2] === 1) ? "volume_off" : "volume_up"
                                 color: Theme.primary
-                                font.pixelSize: Theme.iconSize
+                                size: Theme.barIconSize(barThickness)
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
