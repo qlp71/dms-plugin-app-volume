@@ -36,9 +36,7 @@ $HOME/.config/DankMaterialShell
 
 ## Notes
 
-* Application names are retrieved from `wpctl status -k`, which may not always reflect the actual application name. For example, a music app like `YesPlayMusic` may appear as `Chromium` (The screenshot case).
 * You can change the `.qml` file to customize the appearance or functionality as needed. 
-* If there are different apps with same name in `wpctl status -k`, space will be added in the end of the name to distinguish them. You still have to identify them by yourself.
 
 ## Screenshot
 
