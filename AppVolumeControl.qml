@@ -8,24 +8,53 @@ import qs.Services
 
 PluginComponent {
     id: root
+    // 为每个实例生成唯一ID，避免多显示器冲突
+    property string instanceId: Math.random().toString(36).substring(2, 10)
+    property string scriptPath: {
+        var url = Qt.resolvedUrl("volumeAppInfo.py").toString()
+        return url.replace("file://", "")
+    }
     property string system_volume: "0"
     property bool is_muted: false
-    property var app_Info: {}
-    property var totHeight: 200
+    property var app_Info: ({})
+    property int totHeight: 200
+
     pillClickAction: {
         root.getSystemVolume()
         root.getAllAppInfo()
         console.log("[AppVolume] pill clicked")
     }
 
+    Component.onCompleted: {
+        root.getSystemVolume()
+        root.getAllAppInfo()
+    }
+
+    // 使用较短的轮询间隔来模拟实时更新
     Timer {
-        interval: 5000
+        interval: 1000
         running: true
         repeat: true
         onTriggered: {
             root.getSystemVolume()
             root.getAllAppInfo()
         }
+    }
+
+    function getAllAppInfo() {
+        Proc.runCommand("getAppVolumes_" + instanceId, ["python3", scriptPath], (out, code) => {
+            if (code === 0 && out.trim()) {
+                try {
+                    const obj = JSON.parse(out.trim())
+                    root.app_Info = obj
+                    const appCount = Object.keys(root.app_Info).length
+                    root.totHeight = 100 + appCount * (40 + Theme.spacingM)
+                    console.log("[AppVolume] apps updated, count:", appCount)
+                } catch (e) {
+                    console.warn("[AppVolume] JSON parse failed:", out, e)
+                }
+            }
+        })
     }
 
     horizontalBarPill: Component {
@@ -101,10 +130,10 @@ PluginComponent {
                             onClicked: {
                                 // mute or unmute the system volume
                                 if (root.is_muted === true){
-                                    Proc.runCommand("toggleMute", ["sh", "-c", `wpctl set-mute @DEFAULT_AUDIO_SINK@ 0`])
+                                    Proc.runCommand("toggleMute_" + root.instanceId, ["sh", "-c", `wpctl set-mute @DEFAULT_AUDIO_SINK@ 0`])
                                     root.is_muted = false
                                 } else {
-                                    Proc.runCommand("toggleUnmute", ["sh", "-c", `wpctl set-mute @DEFAULT_AUDIO_SINK@ 1`])
+                                    Proc.runCommand("toggleUnmute_" + root.instanceId, ["sh", "-c", `wpctl set-mute @DEFAULT_AUDIO_SINK@ 1`])
                                     root.is_muted = true
                                 }
                             }
@@ -126,7 +155,7 @@ PluginComponent {
                         alwaysShowValue: false
                         onSliderValueChanged: newValue => {
                             const cmd = `wpctl set-volume @DEFAULT_AUDIO_SINK@ ${newValue / 100.0}`
-                            Proc.runCommand("setVolume", ["sh", "-c", cmd], (out, code) => {
+                            Proc.runCommand("setSystemVolume_" + root.instanceId, ["sh", "-c", cmd], (out, code) => {
                                 if (code === 0) {
                                     console.log("[AppVolume] Set system volume to", newValue)
                                     root.system_volume = String(newValue)
@@ -135,17 +164,22 @@ PluginComponent {
                                 }
                             })
                         }
-                        Component.onCompleted: {
-                            root.getSystemVolume()
-                            root.getAllAppInfo()
-                        }
                     }
                 }
                 Repeater {
                     id: appContent
-                    model: Object.keys(root.app_Info)
+                    model: Object.keys(root.app_Info || {})
                     delegate: Column {
+                        id: appDelegate
                         width: parent.width
+                        required property string modelData
+                        property var node: {
+                            var info = root.app_Info
+                            if (info && appDelegate.modelData && info.hasOwnProperty(appDelegate.modelData)) {
+                                return info[appDelegate.modelData]
+                            }
+                            return ["0", 0, 0]
+                        }
                         // 每个应用的图标 + 名字行
                         Row {
                             width: parent.width
@@ -153,14 +187,14 @@ PluginComponent {
                             spacing: Theme.spacingM
                             DankIcon {
                                 id: appVolumeIcon
-                                name: (root.app_Info[modelData][2] === 1) ? "volume_off" : "volume_up"
+                                name: (appDelegate.node[2] === 1) ? "volume_off" : "volume_up"
                                 color: Theme.primary
                                 size: Theme.barIconSize(barThickness)
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
                             StyledText {
-                                text: modelData
+                                text: appDelegate.modelData
                                 font.pixelSize: Theme.fontSizeMedium
                                 color: Theme.surfaceText
                                 verticalAlignment: Text.AlignVCenter
@@ -173,13 +207,11 @@ PluginComponent {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    const node = root.app_Info[modelData]
-                                    const isMuted = (node[2] === 0 ? false : true)
-                                    const cmd = `wpctl set-mute ${node[0]} ${isMuted ? 0 : 1}`
-                                    Proc.runCommand("toggleMute", ["sh", "-c", cmd])
-                                    root.app_Info[modelData][2] = !isMuted
-                                    appVolumeIcon.name = isMuted ? "volume_up" : "volume_off"
-                                    console.log("[AppVolume] Toggled mute for", modelData, "to", !isMuted)
+                                    const n = appDelegate.node
+                                    const isMuted = (n[2] === 0 ? false : true)
+                                    const cmd = `wpctl set-mute ${n[0]} ${isMuted ? 0 : 1}`
+                                    Proc.runCommand("toggleAppMute_" + root.instanceId, ["sh", "-c", cmd])
+                                    console.log("[AppVolume] Toggled mute for", appDelegate.modelData, "to", !isMuted)
                                 }
                             }
                         }
@@ -195,16 +227,13 @@ PluginComponent {
                             showValue: true
                             unit: "%"
                             thumbOutlineColor: Theme.surfaceContainer
-                            value: root.app_Info[modelData][1]
-                            valueOverride: root.app_Info[modelData][1]
+                            value: appDelegate.node[1]
+                            valueOverride: appDelegate.node[1]
                             alwaysShowValue: false
                             onSliderValueChanged: newValue => {
-                                const cmd = `wpctl set-volume ${root.app_Info[modelData][0]} ${newValue / 100.0}`
-                                Proc.runCommand("setVolume", ["sh", "-c", cmd])
-                                root.app_Info[modelData][1] = newValue
-                                appVolumeSlider.value = newValue
-                                appVolumeSlider.valueOverride = newValue
-                                console.log("[AppVolume] Executed wpctl command to set volume.", modelData, newValue)
+                                const cmd = `wpctl set-volume ${appDelegate.node[0]} ${newValue / 100.0}`
+                                Proc.runCommand("setAppVolume_" + root.instanceId, ["sh", "-c", cmd])
+                                console.log("[AppVolume] Executed wpctl command to set volume.", appDelegate.modelData, newValue)
                             }
                         }
                     }
@@ -213,47 +242,20 @@ PluginComponent {
         
         }
     }
-    function setVolume(appID, volume) {
-        const cmd = "wpctl set-volume " + appID + " " + (volume)
-        Proc.runCommand("setAppVolume", ["sh", "-c", cmd], (out, code) => {
-            if (code === 0) {
-                console.log("[AppVolume] Set volume of", appID, "to", volume)
-            } else {
-                console.warn("[AppVolume] wpctl failed to set app volume:", out)
-            }
-        })
-    }
-
     function getSystemVolume() {
         const cmd = `wpctl get-volume @DEFAULT_AUDIO_SINK@`
-        console.log("[AppVolume] Getting system volume...")
-        Proc.runCommand("getVolume", ["sh", "-c", cmd], (out, code) => {
+        Proc.runCommand("getVolume_" + instanceId, ["sh", "-c", cmd], (out, code) => {
             if (code === 0) {
                 let volString = out.replace(/[^\d.]/g, "");  // 移除非数字和非点号字符
                 let vol = parseFloat(volString) * 100.0;
                 root.system_volume = String(vol)
+                root.is_muted = out.includes("MUTED")
                 console.log("[AppVolume] System volume:", vol)
             } else {
                 console.warn("[AppVolume] wpctl failed:", out)
             }
         })
-        console.log("[AppVolume] Executed wpctl command to get volume.")
     }
 
-    function getAllAppInfo() {
-        console.log("[AppVolume] getting apps volumes")
-        const cmd = `~/.config/DankMaterialShell/plugins/AppVolumeControl/volumeAppInfo.py`
-        Proc.runCommand("getAppVolumes", ["sh", "-c", cmd], (out, code) => {
-            // app_Info update
-            if (code === 0) {
-                root.app_Info = JSON.parse(out)
-                console.log("[AppVolume] Retrieved app volumes", Object.keys(root.app_Info))
-                root.totHeight = 40+Theme.spacingM * 2 + Object.keys(root.app_Info).length * (20 + 1.0*Theme.spacingM + Theme.iconSize) + Theme.spacingM * 2
-            }
-            else {
-                console.warn("[AppVolume] Failed to get app volumes:", out, code)
-            }
-        })
-    }
     popoutHeight: totHeight
 }
