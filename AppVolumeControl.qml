@@ -32,7 +32,7 @@ PluginComponent {
 
     // 使用较短的轮询间隔来模拟实时更新
     Timer {
-        interval: 1000
+        interval: 2000
         running: true
         repeat: true
         onTriggered: {
@@ -79,6 +79,8 @@ PluginComponent {
         Rectangle{
             id: pill
             implicitWidth: pillColumn.implicitWidth + Theme.spacingL
+            implicitHeight: pillColumn.implicitHeight + Theme.spacingL
+            color: "transparent"
             Column {
                 id: pillColumn
                 spacing: Theme.spacingXS
@@ -120,7 +122,7 @@ PluginComponent {
                             id: systemVolumeIcon
                             name: root.is_muted ? "volume_off" : "volume_up"
                             color: Theme.primary
-                            size: Theme.barIconSize(barThickness)
+                            size: Theme.barIconSize(barThickness) * 1.5
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         MouseArea {
@@ -154,6 +156,8 @@ PluginComponent {
                         value: parseFloat(root.system_volume)
                         alwaysShowValue: false
                         onSliderValueChanged: newValue => {
+                            systemVolumeSlider.value = newValue
+                            systemVolumeSlider.valueOverride = newValue
                             const cmd = `wpctl set-volume @DEFAULT_AUDIO_SINK@ ${newValue / 100.0}`
                             Proc.runCommand("setSystemVolume_" + root.instanceId, ["sh", "-c", cmd], (out, code) => {
                                 if (code === 0) {
@@ -163,6 +167,10 @@ PluginComponent {
                                     console.warn("[AppVolume] wpctl failed to set volume:", out)
                                 }
                             })
+                        }
+                        Component.onCompleted: {
+                            // 初始化时获取系统音量
+                            root.getSystemVolume()
                         }
                     }
                 }
@@ -189,8 +197,10 @@ PluginComponent {
                                 id: appVolumeIcon
                                 name: (appDelegate.node[2] === 1) ? "volume_off" : "volume_up"
                                 color: Theme.primary
-                                size: Theme.barIconSize(barThickness)
-                                anchors.verticalCenter: parent.verticalCenter
+                                size: Theme.barIconSize(barThickness) * 1.5
+                                // anchors.verticalCenter: parent.verticalCenter
+                                x: parent.x
+                                y: parent.y + Theme.iconSize / 4
                             }
 
                             StyledText {
@@ -212,10 +222,13 @@ PluginComponent {
                                     const cmd = `wpctl set-mute ${n[0]} ${isMuted ? 0 : 1}`
                                     Proc.runCommand("toggleAppMute_" + root.instanceId, ["sh", "-c", cmd])
                                     console.log("[AppVolume] Toggled mute for", appDelegate.modelData, "to", !isMuted)
+                                    // 立即更新图标状态
+                                    appVolumeIcon.name = isMuted ? "volume_up" : "volume_off"
+                                    // 更新节点状态
+                                    appDelegate.node[2] = isMuted ? 0 : 1
                                 }
                             }
                         }
-
                         // 滑动条
                         DankSlider {
                             id: appVolumeSlider
@@ -234,8 +247,12 @@ PluginComponent {
                                 const cmd = `wpctl set-volume ${appDelegate.node[0]} ${newValue / 100.0}`
                                 Proc.runCommand("setAppVolume_" + root.instanceId, ["sh", "-c", cmd])
                                 console.log("[AppVolume] Executed wpctl command to set volume.", appDelegate.modelData, newValue)
+                                appVolumeSlider.value = newValue
+                                appVolumeSlider.valueOverride = newValue
                             }
                         }
+                        
+
                     }
                 }
             }
