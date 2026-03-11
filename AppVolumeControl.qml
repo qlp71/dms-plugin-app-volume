@@ -14,6 +14,7 @@ PluginComponent {
         var url = Qt.resolvedUrl("volumeAppInfo.py").toString()
         return url.replace("file://", "")
     }
+    property string output_device: "@DEFAULT_AUDIO_SINK@"
     property string system_volume: "0"
     property bool is_muted: false
     property var app_Info: ({})
@@ -99,7 +100,7 @@ PluginComponent {
     popoutContent: Component {
         id: popoutContent
         PopoutComponent {
-            headerText: "音量控制"
+            headerText: output_device
             showCloseButton: true
             // height: 400
             Column {
@@ -270,6 +271,16 @@ PluginComponent {
                 console.log("[AppVolume] System volume:", vol)
             } else {
                 console.warn("[AppVolume] wpctl failed:", out)
+            }
+        })
+        // get the output device name
+        const cmd2 = `pactl list sinks | grep -A10 "$(pactl get-default-sink)" | grep Description | sed 's/.*Description: //'`
+        Proc.runCommand("getOutputDevice_" + instanceId, ["sh", "-c", cmd2], (out, code) => {
+            if (code === 0) {
+                root.output_device = out.trim()
+                console.log("[AppVolume] Output device:", root.output_device)
+            } else {
+                console.warn("[AppVolume] Failed to get output device:", out)
             }
         })
     }
